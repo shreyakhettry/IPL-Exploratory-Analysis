@@ -1,0 +1,774 @@
+---
+title: "Indian Premier League: An Analysis Through the Years"
+author: "Shreya Khettry"
+output:
+  html_document:
+    code_folding: hide
+    fig_caption: yes
+    fig_height: 8
+    fig_width: 7
+    highlight: tango
+    number_sections: yes
+    theme: cosmo
+    toc: yes
+---
+<style>
+body {
+text-align: justify}
+</style>
+
+```{r setup, include = FALSE}
+options(width = 100)
+knitr::opts_chunk$set(out.width = '1000px', dpi = 200, message = FALSE, warning = FALSE)
+```
+
+# Introduction
+
+
+![](images/IPL_Logo.png)
+
+
+Indian Premier League (IPL), Indian professional Twenty20 (T20) cricket league established in 2008. The league, which is based on a round-robin group and knockout format, has teams in major Indian cities. The brainchild of the Board of Control for Cricket in India (BCCI), the IPL has developed into the most lucrative and most popular outlet for the game of cricket. 
+
+The eight founding franchises were the Mumbai Indians, the Chennai Super Kings, the Royal Challengers Bangalore, the Deccan Chargers (based in Hyderabad), the Delhi Daredevils, the Punjab XI Kings (Mohali), the Kolkata Knight Riders, and the Rajasthan Royals (Jaipur). In late 2010 two franchises, Rajasthan and Punjab, were expelled from the league by the BCCI for breeches of ownership policy, but they were later reinstated in time for the 2011 tournament. Two new franchises, the Pune Warriors India and the Kochi Tuskers Kerala, joined the IPL for the 2011 tournament. The Kochi club played just one year before the BCCI terminated its contract. In 2013 the Deccan Chargers were banned and Sunrisers Hyderabad was formed to replace them. Pune Warriors India withdrew from the IPL on 21 May 2013 over financial differences with the BCCI. On 14 June 2015, it was announced that two-time champions, Chennai Super Kings, and the inaugural season champions, Rajasthan Royals, would be suspended for two seasons following their role in a match-fixing and betting scandal.Then, on 8 December 2015, following an auction, it was revealed that Pune and Rajkot would replace Chennai and Rajasthan for two seasons. The two teams were the Rising Pune Supergiant and the Gujarat Lions respectively.
+
+The 2009 Indian Premier League season was hosted in South Africa as the matches coincided with the General Elections in India.The opening 20 matches of the 2014 season were held in UAE as they coincided once again with the General Elections in India. The 2020 season of IPL was hosted in UAE due to Covid-19 pandemic situation in India.
+
+
+# Understanding the Sport
+
+Cricket is a game of bat and ball where 2 teams of 11 players each play. The data which I have is for the T20 format. In this both teams bat (and ball) for 20 overs each and whoever scores more runs wins. 11 players can generally be classified in 4 different categories
+
+- Batsman: Objective is to score runs as quickly as possible (4-6 Players in each team)
+- Bowler: Objective is to take wickets and give as less as runs possible (3-5 in each team)
+- All Rounder: Does both batting and bowling (3-5 in each team)
+- Wicket Keeper + Batsman: Stands behind the stumps for fielding team. Objective is to collect the ball and help in dismissing the batsman. Every team needs to have 1 specialist keeper.
+
+Along with that, all the  players field when a team is bowling and their objective is to limit runs and take wickets.
+
+Details of the sports can be looked up at the Wiki page: 
+https://en.wikipedia.org/wiki/Cricket
+
+
+# Overview of the Analysis
+
+The main objective of the analysis that I will be doing is to understand and observe the data, in turn trying to discover any patterns that can be found through the years. I hope that this analysis either reinforces ideas or challenges some other ideas. I will be dividing my analysis in various sections based on common characteristics. Each graph will be accompanied by a follow-up summary of the graph, my observations and justifications.
+
+
+```{r message=FALSE, warning=FALSE, include=FALSE}
+library(tidyverse)
+library(viridis)
+library(grid)
+library(gridExtra)
+library(formattable)
+```
+
+
+```{r  include=FALSE}
+matches <- read.csv("IPL Matches 2008-2020.csv")
+deliveries_df <- read.csv("IPL Ball-by-Ball 2008-2020.csv")
+```
+
+
+```{r include=FALSE}
+matches[matches == "Rising Pune Supergiants"] <- "Rising Pune Supergiant"
+deliveries_df[deliveries_df == "Rising Pune Supergiants"] <- "Rising Pune Supergiant"
+
+matches[matches == "Pune Warriors"] <- "Pune Warriors India"
+deliveries_df[deliveries_df == "Pune Warriors"] <- "Pune Warriors India"
+
+matches[matches == "Delhi Daredevils"] <- "Delhi Capitals"
+deliveries_df[deliveries_df == "Delhi Daredevils"] <- "Delhi Capitals"
+
+matches[matches == "Bangalore"] <- "Bengaluru"
+deliveries_df[deliveries_df == "Bangalore"] <- "Bengaluru"
+
+matches[matches == "M.Chinnaswamy Stadium"] <- "M Chinnaswamy Stadium"
+deliveries_df[deliveries_df == "M.Chinnaswamy Stadium"] <- "M Chinnaswamy Stadium"
+```
+
+
+```{r include=FALSE}
+matches_df <- subset(matches, matches$result != "no result")
+```
+
+
+```{r include=FALSE}
+ipl_data <- left_join(deliveries_df, matches_df, c("id" = "id")) %>%
+  select(-team1, -team2)
+```
+
+# Toss and Venue Analysis
+
+<center>
+
+![](images/Toss.png)
+
+</center>
+
+## Toss Advantage
+
+```{r }
+matches_df$toss_adv <- ifelse(as.character(matches_df$toss_winner) == as.character(matches_df$winner),"Won","Lost")
+
+ggplot (matches_df[which(!is.na(matches_df$toss_adv)),], aes(toss_adv, fill = toss_adv)) + 
+  geom_bar() +
+  labs(x = "Toss", y = "Number of Matches Won", fill = "Toss Result") +
+  ylim(0, 450) + 
+  ggtitle("Toss Advantage")
+```
+
+Based on the graph above we can conclude that Winning the Toss does have a slight advantage as teams who won the toss and won the match are higher than the teams who lost the toss and won the match.
+
+
+## Toss Decision 
+
+```{r message=FALSE, warning=FALSE}
+by_toss <- ipl_data %>%
+  group_by(id, inning, batting_team, bowling_team, city, toss_winner, toss_decision, winner) %>%
+  summarise(runs = sum(total_runs))
+
+toss_result = by_toss %>% 
+  group_by(id, city, toss_winner, toss_decision, winner) %>% 
+  summarise(run = sum(runs))
+
+toss_tab <- data.frame(table(toss_result$toss_decision))
+colnames(toss_tab) = c("Toss Decision after Winning", "Frequency")
+formattable(toss_tab, align = c("l", "c"))
+```
+
+From the results in the table above we can see that 'Fielding' first is more popular than 'Batting' first after teams win the toss. Although there is no particular reason as to why one is more preferable than the other, however I feel that due to the T20 game being much smaller, teams feel that it is easier to chase a target and put pressure on their opponents.
+
+
+### Toss Decision Filtered by Country
+
+#### Toss Decisions in India Filtered by City
+
+```{r}
+toss_result %>%
+  filter(city == "Ahemdabad" | city == "Bengaluru" | city == "Chandigarh" | city == "Chennai" | city == "Cuttack" | city == "Delhi" | city == "Dharamsala" | city == "Hyderabad" | city == "Indore" | city == "Jaipur" | city == "Kanpur" | city == "Kochi" | city == "Kolkata" | city == "Mumbai" | city == "Nagpur" | city == "Pune" | city == "Rajpur" | city == "Rajkot" | city == "Ranchi" | city == "Vishakhapatnam") %>% 
+  ggplot() + 
+  geom_bar(aes(x = toss_decision, fill = toss_winner)) +
+  facet_wrap(~city) +
+  labs(x = "Toss Decision", y = "Number of Tosses", fill = "Toss Winner") +
+  ggtitle("Toss Winners in India")
+```
+
+
+Based on the graph above we notice that most teams prefer to win the toss and choose to Field first in Bengaluru, which is closely followed by Mumbai, Kolkata and Delhi. Chennai and Kanpur (although not a lot of matches were played here) are the only two cities in which teams prefer to Bat first. The reason for selecting to Bat first in Chennai could be because of the pitch. The pitch is quite slow and it becomes difficult to score runs as the game progresses towards the second innings and teams feel that they would be able to defend the target they have set. This is a complete contrast to the results from the table in the previous question in which it could be seen that teams prefer to Field first after winning the toss.
+
+
+#### Toss Decisions in South Africa Filtered by City
+
+```{r}
+toss_result %>%
+  filter(city == "Bloemfontein" | city == "Cape Town" | city == "Centurion" | city == "Durban" | city == "East London" | city == "Johannesburg" | city == "Kimbery" | city == "Port Elizabeth") %>% 
+  ggplot() + 
+  geom_bar(aes(x = toss_decision, fill = toss_winner)) +
+  facet_wrap(~city) +
+  labs(x = "Toss Decision", y = "Number of Tosses", fill = "Toss Winner") +
+  ggtitle("Toss Winners in South Africa")
+```
+
+
+Based on the graph we see that in almost all cities except Johannesburg teams prefer to Bat first after winning the Toss. We cannot say this for Bloemfontein and Centurion as the toss decision results are equal. These results are quite different from Indian cities, where most teams prefer Fielding first in most cities. A reason could be the nature of the pitches due to the difference in climatic conditions between the two countries.
+
+
+#### Toss Decisions in United Arab Emirates Filtered by City
+
+
+```{r}
+toss_result %>%
+  filter(city == "Abu Dhabi" | city == "Dubai" | city == "Sharjah") %>% 
+  ggplot() + 
+  geom_bar(aes(x = toss_decision, fill = toss_winner)) +
+  facet_wrap(~city) +
+  labs(x = "Toss Decision", y = "Number of Tosses", fill = "Toss Winner") +
+  ggtitle("Toss Winners in United Arab Emirates")
+```
+
+
+Based on the graph above, Abu Dhabi is the only city in which teams prefer to Bat first, however the difference is quite small. In Dubai and Sharjah teams prefer to Field first however once again, the difference is quite small.
+
+
+## Total Matches Played in each City
+
+```{r}
+ggplot(matches[which(!is.na(matches$city)),], aes(city, fill = city, rm.na = TRUE)) +
+  geom_bar() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(x = "City Names", y = "Number of Matches Played") +
+  ggtitle("Number of Matches Played in Different Cities") + 
+  guides(fill = FALSE)
+```
+
+
+From the graph above we see that the maximum number of matches have been played in Mumbai followed by Bengaluru and Kolkata.
+
+
+## Total Matches Played in each Stadium
+```{r}
+
+stadium_table <- table(matches_df$venue)
+stadium_table_df <- data.frame(stadium_table)
+colnames(stadium_table_df) <- c("Venue", "Matches Played")
+
+ggplot(stadium_table_df, aes(x = Venue, y = `Matches Played`, fill = Venue)) +
+  geom_bar(stat = "identity", position = position_dodge(), color = "white") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1), legend.position = "none") +
+  geom_text(aes(label = `Matches Played`, y = `Matches Played`), size = 2.0,  position = position_dodge(0.9), vjust = 0) +
+  labs(x = "Stadium Name", y = "Number of Matches Played") +
+  ggtitle("Number of Matches Played in Different Stadiums") 
+```
+
+
+From the graph above we see that the maximum number of matches is played in Eden Gardens(Kolkata) and M Chinnaswamy Stadium(Bengaluru) followed by Feroz Shah Kotla(New Delhi) and Wankhede Stadium (Mumbai). This is surprising as the results from the previous graph stated that the maximum number of matches was played in Mumbai and based on the previous graph Wankhede Stadium should have the maximum number of matches being played instead of Eden Gardens. The reason for this is that Mumbai has another stadium called Dr. D.Y. Patil Sports Academy which has also hosted a few IPL matches and hence the disparity in the results.
+
+
+# Team Analysis
+
+<center>
+
+![](images/Team.png)
+
+</center>
+
+## Decision Comparison after Winning the Toss
+
+```{r}
+decision <- matches_df %>% 
+  group_by(toss_winner, toss_decision) %>%
+  summarize(count = n())
+
+ggplot(decision, aes(x = toss_winner, y = count, fill = toss_decision)) +
+  geom_bar(stat="identity", position = "dodge") +
+  labs(x = "Team Names", y = "Bat and Field count", title = "Decision Comparison after Winning the Toss", fill = "Toss Decision") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+From the graph above we observe that all teams except Chennai Super Kings, Deccan Chargers and Pune Warriors India prefer to Field in the First Innings after Winning the Toss.
+
+
+
+
+## Total Matches Played by Teams
+
+```{r}
+ggplot (as.data.frame(table(matches_df$team2) + table(matches_df$team1)), aes(reorder(Var1,-Freq), Freq, fill = Var1)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(x = "Teams", y = "Matches Played") +
+  ylim(0, 210) + 
+  ggtitle("Number of Matches Played by Every Team") +
+  guides(fill = FALSE)
+```
+
+
+Mumbai Indians has played the maximum number of matches followed by Delhi Capitals, Kolkata Knight Riders and Royal Challengers Bangalore. The reason that teams such as Kochi Tuskers Kerala, Rising Pune Supergiant, Gujarat Lions etc. have not played a lot of matches is because they were part of the IPL for not more than 2 seasons.
+
+
+## Total Matches Won by Teams
+
+```{r}
+ggplot (matches_df, aes(winner)) + 
+  geom_bar(aes(fill = winner)) + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(x = "Teams", y = "Matches Won") + 
+  ggtitle("Matches Won by Each Team") +
+  guides(fill = FALSE)
+```
+
+
+Mumbai Indians, once again, have won the maximum number of times as they have won the competition 5 times. They are followed by three time winners Chennai Super Kings and two time winners Kolkata Knight Riders.
+
+
+## Win Percentage of the Teams
+
+```{r message=FALSE}
+matches_won <- as.data.frame(table(matches_df$winner))
+colnames(matches_won) [2] <- "Won"
+
+matches_played <- as.data.frame(table(matches_df$team2) + table(matches_df$team1))
+colnames(matches_played) [2] <- "Played"
+
+ggplot (left_join(matches_played, matches_won ), aes(reorder(Var1, -Won / Played), Won * 100 / Played, fill = Var1)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(x = "Teams", y = "Win Percentage") +
+  ylim(0, 65) + 
+  ggtitle("Win Percentage of the Teams") +
+  guides(fill = FALSE)
+```
+
+
+Based on the results we see that Chennai Super Kings have the Best Win Percentage, followed by Mumbai Indians and Sunrisers Hyderabad. This is quite surprising as we would expect Mumbai Indians to have a higher win percentage baseed on the previous two graphs.
+
+
+## Boundary Analysis for Teams
+
+```{r}
+deliveries_df %>%
+  filter(batsman_runs>=4) %>%
+  group_by(batting_team) %>%
+  summarise(Fours = sum(batsman_runs == 4), Sixes = sum(batsman_runs == 6), count = n()) %>%
+  arrange(desc(count)) %>%
+  pivot_longer(c(Fours,Sixes), "Boundaries", values_to = "Number of Boundaries") %>%
+  mutate(Teams = fct_reorder(batting_team, count)) %>%
+  ggplot() + 
+  geom_col(aes(x = Teams, y = `Number of Boundaries`, fill = Boundaries)) +
+  coord_flip() + 
+  labs(title = "Teams with Highest Number of Boundaries") +
+  geom_text(aes(x = Teams, y = `Number of Boundaries`, label = `Number of Boundaries`), nudge_y = -100)
+```
+
+
+From the graph above we see that Mumbai Indians hit the maximum boundaries as well as the Maximum Sixes followed by Royal Challengers Bangalore and Kings XI Punjab. Mumbai Indians has hit the Maximum Fours followed by Delhi Capitals and Kings XI Punjab.
+
+
+## Leading Run-Scorer of Each Team
+
+```{r}
+deliveries_df %>%
+  group_by(batsman,batting_team) %>%
+  summarise(runs = sum(batsman_runs)) %>%
+  ungroup(batsman) %>%
+  group_by(batting_team) %>%
+  arrange(desc(runs)) %>%
+  top_n(1,runs) %>%
+  ungroup() %>%
+  mutate(Team = fct_reorder(batting_team,runs)) %>%
+  ggplot() +
+  geom_col(aes(x = Team, y = runs, fill = Team), show.legend = FALSE) +
+  geom_label(aes(x = Team, y = runs, label = batsman)) +
+  labs(x = "Team", y = "Number of Runs", title = "Leading Run-Scorer of Each Team") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+## Leading Wicket-Taker of Each Team
+
+```{r}
+deliveries_df %>%
+  group_by(bowler, bowling_team) %>%
+  summarise(count = n()) %>%
+  ungroup() %>%
+  group_by(bowling_team) %>%
+  arrange(desc(count)) %>%
+  top_n(1, count) %>%
+  ungroup() %>%
+  mutate(Team = fct_reorder(bowling_team,count)) %>%
+  filter(!is.na(bowling_team)) %>%
+  ggplot() +
+  geom_col(aes(x = Team, y = count, fill = Team), show.legend = FALSE) +
+  geom_label(aes(x = Team, y = count, label = bowler)) +
+  labs(x = "Teams", y = "Number of Wickets", title = "Top Wicket-takers of Each Team") + 
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5))
+```
+
+
+## Run Comparison between Teams Batting First and Teams Batting Second
+
+```{r}
+by_over <- ipl_data %>%
+  group_by(id, inning, bowler, over) %>%
+  summarise(bat_run = sum(batsman_runs), balls = n(), runs = sum(total_runs))
+
+by_over %>% 
+  filter(inning <= 2) %>%
+  ggplot(aes(x = over, y = runs, color = factor(inning))) +
+  geom_boxplot(aes(cut_width(over, 1))) +
+  labs(x = "Overs", y = "Runs", title = "Run Comparison Batting in the First and Second Innings", color = "Inning") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))
+```
+
+
+From the graph we infer that the team batting first always starts slower than the team batting second. The former also scores less runs in the powerplay (First 6 overs) than the latter. Both teams score approximately equal number of runs in middle overs. The team that bats in the first innings tends to score more in the death overs (Last 4 overs) than the team that bats in the second innings.
+
+
+
+# Player Analysis
+
+<center>
+
+![](images/Player.png)
+
+</center>
+
+## Players with Highest Runs
+
+```{r message=FALSE}
+best_batsman <- deliveries_df %>% 
+  group_by(batsman) %>% 
+  summarise(runs = sum(batsman_runs)) %>% 
+  arrange(desc(runs)) %>%
+  filter(runs > 4000) 
+
+best_batsman %>% 
+  ggplot(aes(reorder(batsman, -runs), runs, fill = batsman)) +
+  geom_bar(stat = "identity") + 
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) + 
+  labs(x = "Batsman Name", y = "Number of Runs") +
+  ggtitle("Players with Highest Number of Runs (Top 10)", subtitle = "Minimum 4000 runs") +
+  guides(fill = FALSE)
+```
+
+
+Virat Kohli of Royal Challengers Banaglore has the highest number of runs followed by Suresh Raina of Chennai Super Kings and David Warner of Sunrisers Hyderabad. 
+
+
+## Players at Striker's End 
+
+```{r}
+deliveries_df %>%
+  count(batsman, sort = TRUE) %>%
+  head(10) %>%
+  mutate(batsman = fct_reorder(batsman, n)) %>%
+  ggplot() +
+  geom_col(aes(x = batsman, y = n, fill = batsman), show.legend = FALSE) +
+  labs(y = "Number of Balls Faced", x = "Batsman", title = "Players at Striker's End (Top 10)") +
+  ylim(0, 5000) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 1)) 
+```
+
+
+Virat Kohli has faced the maximum number of balls and has spent the longet time on the Striker's End followed by Shikhar Dhawan and Rohit Sharma.
+
+
+## Players at Non-Striker's End 
+
+```{r message=FALSE}
+deliveries_df %>% 
+  group_by(non_striker) %>% 
+  summarise(Runs = sum(total_runs)) %>% 
+  top_n(n = 10, wt = Runs) %>%
+  ggplot(aes(reorder(non_striker, -Runs), Runs, fill = non_striker)) +
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 75, hjust = 1)) + 
+  labs(x = "Batsman Name", y = "Number of Runs") +
+  ggtitle("Players at Non-Striker's End (Top 10)") +
+  guides(fill = FALSE)
+```
+
+
+The graph above indicates which players have the maximum runs even after being at the non-striker's end. Players need support from their teammate at the other end to score runs. Comparing this graph to the previous one we see that unless you are Chris Gayle, you will need the help of your teammate at the other end to accumulate runs. Another intersting observation is that the Top 2 players in the Striker's End and the Non-Strikers End are the same, according to the previous and current graphs (Virat Kohli and Shikhar Dhawan).
+
+
+## Highest Batting Strike Rate
+
+```{r message=FALSE, warning=FALSE}
+deliveries_df %>% 
+  group_by(batsman) %>% 
+  filter(length(total_runs) > 500) %>% 
+  summarise(strike_rate = mean(batsman_runs) * 100) %>%
+  top_n(n = 10,wt = strike_rate) %>%
+  ggplot(aes(reorder(batsman, -strike_rate), strike_rate, fill = batsman)) +
+  geom_bar(stat = "identity") + 
+  theme(axis.text.x = element_text(angle = 75, hjust = 1)) +
+  labs(x = "Batsman Name", y = "Batting Strike Rate") +
+  ggtitle("Players with Highest Batting Strike Rate (Top 10)", subtitle = "Minimum 500 balls faced") +
+  ylim(0, 175) +
+  guides(fill = FALSE)
+```
+
+Batting strike rate is defined as the average number of runs scored per 100 balls faced. The higher the strike rate, the more effective a batsman is at scoring quickly. From the graph above we see that Andre Russell of Kolkata Knight Riders has the highest strike rate (Bowlers Fear Him) followed by Sunil Narine of Kolkata Knight Riders and Hardik Pandya of Mumbai Indians.
+
+
+## Boundary Analysis for Players
+
+```{r}
+deliveries_df %>%
+  filter(batsman_runs >= 4) %>%
+  group_by(batsman) %>%
+  summarise(total = sum(batsman_runs), Fours = sum(batsman_runs == 4), Sixes = sum(batsman_runs == 6), count = n()) %>%
+  arrange(desc(total)) %>%
+  head(10) %>%
+  pivot_longer(c(Fours,Sixes),"Boundaries",values_to = "Number of Boundaries") %>%
+  mutate(batsman = fct_reorder(batsman,count)) %>%
+  ggplot(aes(x = batsman, y = `Number of Boundaries`, fill = Boundaries)) + 
+  geom_col() +
+  coord_flip() + 
+  labs(x = "Batsman", title = "Players with Highest Number of Boundaries (Top 10)")
+```
+
+From the graph above, we see that Chris Gayle of Kings XI Punjab has hit the maximum number of boundaries followed by Virat Kohli of Royal Challengers Bangalore and David Warner of Sunrisers Hyderabad. Chris Gayle has hit the maximum number of Sixes and Shikhar Dhawan of Delhi Capitals has hit the maximum number of Fours.
+
+
+## Players with Maximum Wickets
+
+```{r message=FALSE}
+best_bowler <- deliveries_df %>% 
+  group_by(bowler) %>% 
+  filter(player_dismissed != "") %>% 
+  summarise(wickets = length(player_dismissed)) %>% 
+  top_n(n = 10, wt = wickets) 
+
+best_bowler %>% 
+  ggplot(aes(reorder(bowler, -wickets), wickets, fill = bowler)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
+  labs(x = "Bowler Name", y = "Number of Wickets") +
+  ggtitle("Players with Highest Number of Wickets (Top 10)") +
+  ylim(0, 200) +
+  guides(fill = FALSE)
+```
+
+
+Lasith Malinga of Mumbai Indians is the highest wicket-taker throughout the IPL, followed by Dwayne Bravo of Chennai Super Kings and Amit Mishra of Delhi Capitals.
+
+
+## Players who Bowled the Maximum Deliveries
+
+```{r}
+deliveries_df %>%
+  count(bowler, sort = TRUE) %>%
+  head(10) %>%
+  mutate(bowler = fct_reorder(bowler, n)) %>%
+  ggplot() +
+  geom_col(aes(x = bowler, y = n, fill = bowler), show.legend = FALSE) +
+  labs(y = "Number of deliveries bowled", x = "Bowler", title = "Players who have Bowled the Maximum Deliveries (Top 10)") +
+  ylim(0, 4000) +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) 
+```
+
+
+Harbhajan Singh of Mumbai Indians has bowled the maximum number of deliveries followed by Ravichandran Ashwin of Delhi Capitals and Piyush Chawla of Kolkata Knight Riders.
+
+
+## Players with Highest Economic Rate
+
+```{r}
+deliveries_df %>%
+  group_by(bowler) %>%
+  summarise(runs = sum(total_runs), overs = (n()/6), eco = (runs/overs)) %>%
+  filter(overs > 50) %>%
+  arrange(eco) %>%
+  head(10) %>%
+  mutate(bowler = fct_reorder(bowler,desc(eco))) %>%
+  ggplot() +
+  geom_bar(aes(x = bowler, y = eco, fill = bowler), stat = "identity", show.legend = FALSE) +
+  labs(y = "Economy Rate", x = "Bowler", title = "Bowlers with Highest Economy Rates (Top 10)", subtitle = "Minimum 50 overs bowled") +
+  coord_flip() +
+  ylim(0, 8) +
+  geom_label(aes(x = bowler, y = eco, label = round(eco, 2)))
+```
+
+
+A player's economy rate is the average number of runs they have conceded per over bowled. In most circumstances, the lower the economy rate is, the better the bowler is performing. From the graph above we see that Rashid Khan of Sunrisers Hyderabad has the lowest Economy Rate followed by Anil Kumble (retired) and Glenn McGrath (retired).
+
+
+## Most Extras by Bowlers
+
+```{r}
+deliveries_df %>%
+  mutate(extra_runs) %>%
+  group_by(bowler) %>%
+  summarise(sum = sum(extra_runs), count = n()) %>%
+  filter(count > 50) %>%
+  arrange(desc(sum)) %>%
+  head(10) %>%
+  mutate(bowler = fct_reorder(bowler,desc(sum))) %>%
+  ggplot(aes(x = bowler, fill = bowler)) +
+  geom_col(aes(y = sum), show.legend = FALSE) + 
+  geom_text(aes(y = sum, label = count), nudge_y = 5) +
+  labs(x="Bowler",y = "Total Extra Runs conceeded", title = "Bowlers who Conceeded Highest Runs through Extras", subtitle = "(Number above the bar shows total number of balls bowled)") +
+  theme(axis.text.x = element_text(angle = 90, vjust = 0.5)) 
+```
+
+
+Ooops! The Highest Wicket-Taker Lasith Malinga is also the one who has conceded the highest amount of runs through extras! I have shown number of balls bowled by each bowler above the bar so that we can see which player has more extras in lesser number of balls bowled and vice versa.
+
+
+##Dismissal Types and Count
+
+```{r}
+dismissal <- ipl_data[!is.na(ipl_data$dismissal_kind),] %>%
+  group_by(dismissal_kind) %>%
+  summarize(count = n())
+
+ggplot(dismissal, aes(x = dismissal_kind, y = count, fill = count)) +
+  geom_bar(stat = "identity") +
+  scale_fill_continuous(type = "viridis") +
+  coord_flip() +
+  labs(x = "Mode of Dismissals", y = "Count", title = "Mode of Dismissals")
+
+
+colnames(dismissal) = c("Dismissal Type", "Count")
+formattable(dismissal, align = c("l", "c"))
+```
+
+
+From the graph and table above we can see that 'Caught' is the dismissal type that occurs maximum number of times i.e. it has the highest count. 'Obstructing the field' has te lowest count and therefore occurs the least number of times; the reason could be that this is an extremely rare instance.
+
+
+## Best Fielders
+
+```{r message=FALSE}
+deliveries_df %>%
+  filter(fielder != "") %>%
+  group_by(dismissal_kind) %>%
+  count(fielder, sort = TRUE) %>%
+  top_n(10, n) %>%
+  ungroup() %>%
+  mutate(dismissal_kind = factor(dismissal_kind, labels = c("Caught in Style!", "Run Out!", "Stunning Stumping!")), fielder = fct_reorder(fielder,desc(n))) %>%
+  ggplot(aes(fill = dismissal_kind)) +
+  geom_col(aes(x = fielder, y = n), position = "dodge", show.legend = FALSE) + 
+  facet_wrap(.~dismissal_kind, scales = "free", ncol = 3) +
+  labs(y = "Number of Wickets Taken", x = "Fielder", title = "Best Fielders?")+
+  coord_flip() +
+  theme(axis.text.x = element_text(angle = 90, hjust = 1))  
+```
+
+From the Graph above we can see that Dinesh Karthik of Kolkata Knight Riders is the Best Catcher followed MS Dhoni of Chennai Super Kings. MS Dhoni has the maximum number of run-outs and stumpings, way ahead of all the other players. From this we can conclude that MS Dhoni is overall the Best Fielder.
+
+
+## Maximum 'Man of the Match' Awards
+
+```{r message=FALSE, warning=FALSE}
+matches_df %>%
+  count((player_of_match), sort = TRUE) %>%
+  mutate(player = fct_reorder(`(player_of_match)`, n)) %>%
+  head(12) %>%
+  ggplot() +
+  geom_col(aes(x = player, y = n, fill = player), show.legend = FALSE) +
+  coord_flip() +
+  ylim(c(0, 25)) +
+  labs(x = "Player Name", y = "Number of Times Awarded", title = "Maximum 'Man of the Match' Awards")
+```
+
+Based on the graph above, we see that AB de Villiers of Royal Challengers Bangalore has won the Maximum number of Man of the Match Awards followed by Chris Gayle of Kings XI Punjab and Rohit Sharma of Mumbai Indians.
+
+
+# Overs and Innings Analysis
+
+
+<center>
+
+![](images/Over.png)
+
+</center>
+
+
+## Total Runs Scored in Each Delivery of an Over
+
+```{r message=FALSE, warning=FALSE, paged.print=FALSE}
+per_ball_run <- deliveries_df %>% 
+  group_by(ball) %>% 
+  summarise(Runs = sum(total_runs)) %>% 
+  filter(ball < 7) 
+
+per_ball_run %>% 
+  ggplot(aes(ball, Runs, fill = ball)) +
+  geom_bar(stat = "identity") + 
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5, 6)) +
+  scale_fill_continuous(type = "viridis") +
+  labs(x = "Ball Number", y = "Total Runs") +
+  ggtitle("Total Runs Scored in Each Delivery of all the Overs") +
+  ylim(0, 45000) +
+  guides(fill = FALSE)
+```
+
+
+From the graph we see that the 4th ball of all the overs throughout all the seasons of the IPL has fetched the maximum runs closely followed by the 3rd ball.
+
+
+## Average Runs Scored in Each Delivery of an Over
+
+```{r message=FALSE, warning=FALSE}
+avg_run_over <- deliveries_df %>% 
+  group_by(ball) %>% 
+  summarise(Runs = mean(total_runs)) %>% 
+  filter(ball < 7)
+  
+avg_run_over %>% 
+  ggplot(aes(ball, Runs, fill = ball)) +
+  geom_bar(stat = "identity") + 
+  scale_x_continuous(breaks = c(1, 2, 3, 4, 5, 6)) + 
+  scale_fill_continuous(type = "viridis") +
+  labs(x = "Ball Number", y = "Average Runs Scored") +
+  ggtitle("Average Runs Scored in Each Delivery of all the Overs") +
+  ylim(0.0, 1.5) +
+  guides(fill = FALSE)
+```
+
+
+From the graph we see that the 4th ball of all the overs throughout all the seasons of the IPL has fetched the highest average followed closely by the 3rd ball.
+
+
+## Total Runs Scored in Each Over of an Inning
+
+```{r message=FALSE, warning=FALSE}
+total_runs_per_over <- deliveries_df %>% 
+  group_by(over) %>% 
+  summarise(Runs = sum(total_runs))
+  
+total_runs_per_over %>% 
+  ggplot(aes(over, Runs, fill = over)) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous(breaks = 0:19, labels = c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20')) + 
+  scale_fill_continuous(type = "viridis") +
+  labs(x = "Over Number", y = "Total Runs Scored") +
+  ggtitle("Total Runs Scored in Each Over of all the Innings") +
+  guides(fill = FALSE)
+```
+
+
+From the graph we see that the maximum runs are scored in the 18th over of an innings followed by the 17th over. A reason for this could be that in the last few overs the mentality of the batsmen is to "Go All Out" and they try getting as many runs as they can to put pressure on the bowler and the defending team.
+The minimum runs are scored in the 1st over followed by the 7th over.
+
+## Average Runs Scored in Each Over of an Inning
+
+```{r message=FALSE, warning=FALSE}
+avg_runs_per_over <- deliveries_df %>% 
+  group_by(over) %>% 
+  summarise(Runs = mean(total_runs) * 6)
+  
+avg_runs_per_over %>% 
+  ggplot(aes(over, Runs, fill = over)) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous(breaks = 0:19, labels = c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20')) + 
+  scale_fill_continuous(type = "viridis") +
+  labs(x = "Over Number", y = "Average Runs Scored") +
+  ggtitle("Average Runs Scored in Each Over of all the Innings") +
+  guides(fill = FALSE)
+```
+
+
+From the graph we can see that the average number of runs is higher in the last few overs of the innings with the 20th over having the highest average, followed by the 19th and 18th overs. The 1st over has the lowest average.
+
+
+## Total Wickets Taken in Each Over of an Inning
+
+```{r message=FALSE, warning=FALSE}
+deliveries_df %>% 
+  group_by(over) %>% 
+  summarise(Wickets = length(player_dismissed)) %>% 
+  ggplot(aes(over, Wickets, fill = over)) +
+  geom_bar(stat = "identity") +
+  scale_x_continuous(breaks = 0:19, labels = c('1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11', '12', '13', '14', '15', '16', '17', '18', '19', '20')) + 
+  scale_fill_continuous(type = "viridis") +
+  labs(x = "Over Number", y = "Total Wickets Taken") +
+  ggtitle("Total Number of Wickets in Each Over of all the Innings") +
+  guides(fill = FALSE)
+```
+
+
+From the garph we see that that the most wickets are taken in the 1st and 2nd over. The graph has a logarithmic decay due to the fact that as the innings progresses and the overs increase the chances of taking wickets slowly reduces. The 20th over has the least number of wickets. A reason for this could be that a batsman can make a few mistakes when he is facing the new ball. However once he gets set, he will make lesser mistakes which would result in lesser chances of his wicket getting dropped.
+
+
+# Conclusion
+
+Winning the toss does have a slight advantage, however this is not necessary in every match. Teams usually prefer to win the toss and Field first as chasing totals seems to be the way to go if you want to win. There are many factors that influence this and they should be studied along with many other factors. There is a lot of potential with this data set, a few more elements could be added so as to try and answer more questions. The decision after winning the toss also relies in which city and stadium the match is being played in, as each pitch is quite different from one another.
+
+Mumbai Indians have been managed to accrue a lot of wins in the time frame studied, but they have the Chennai Super Kings on their in hot pursuit, who have a higher winning percentage. Mumbai Indians also lead as the Highest Boundary Hitters.Teams that have low number of wins is due to the fact that they have played for 2 seasons or less. 
+
+Virat Kohli is the highest run-getter and also spends the maximum time on the striker's and non-striker's end. Lasith Malinga is the highest wicket-getter throughout the tournament and he also tops the chart for giving the most number of extra runs. Andre Russell has the Best Batting Striking Rate and Rashid Khan has the Best Bowling Strike Rate. MS Dhoni, overall, is the best fielder. 
+
+Few number of runs is scored in the 1st over and the maximum number of wickets have been taken in the 1st over. The last few overs have the highest average runs that are scored, and the last over has the lowest number of wickets that has been taken. 
+
+There is no one specific pattern that can be found for consecutive years for any of the teams or players. The tournament and the sport itself are quite dynamic in nature and the tables can turn anytime on anyone!
+
+
+<center>
+
+![](images/ThankYou.png)
+
+</center>

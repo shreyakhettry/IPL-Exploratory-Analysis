@@ -12,7 +12,7 @@ Methodology
   
 - Applied various transformation and visualization techniques to categorize and generate diverse graphical representations of the data
 
-Files Information
+Files Details
 
 - IPL Analysis Project.Rmd: The code for the project written in R
   

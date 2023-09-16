@@ -7,6 +7,6 @@ Indian Premier League (IPL) is, an Indian professional Twenty20 (T20) cricket le
 
 Methodology
 
-• Utilized R for data visualization, statistical interpretation, and HTML generation in the project.
-• Conducted extensive Data Wrangling, Data Exploration and Basic Univariate and Bivariate Analysis of the variables
-• Applied various transformation and visualization techniques to categorize and generate diverse graphical representations of the data
+- Utilized R for data visualization, statistical interpretation, and HTML generation in the project.
+- Conducted extensive Data Wrangling, Data Exploration and Basic Univariate and Bivariate Analysis of the variables
+- Applied various transformation and visualization techniques to categorize and generate diverse graphical representations of the data

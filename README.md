@@ -19,3 +19,5 @@ Indian Premier League (IPL) is, an Indian professional Twenty20 (T20) cricket le
 - IPL Analysis Project.html: The HTML generation of the project from the code in the R file
   
 - IPL Analysis Project.pdf: The PDF generation of the project from the HTML link
+
+For more information and an in-depth analysis please look at the attached PDF.
